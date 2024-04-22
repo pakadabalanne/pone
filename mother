@@ -1,0 +1,206 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+#include "ns3/csma-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/ipv4-global-routing-helper.h"
+
+#include "ns3/netanim-module.h"
+
+
+// Default Network Topology
+//
+//       10.1.1.0
+// n0 -------------- n1   n2   n3   n4
+//    point-to-point  |    |    |    |
+//                    ================
+//                      LAN 10.1.2.0
+
+
+using namespace ns3;
+
+NS_LOG_COMPONENT_DEFINE ("SecondScriptExample");
+
+int 
+main (int argc, char *argv[])
+{
+  bool verbose = true;
+  uint32_t nCsma = 3;
+  bool tracing = true;
+
+  CommandLine cmd;
+  cmd.AddValue ("nCsma", "Number of \"extra\" CSMA nodes/devices", nCsma);
+  cmd.AddValue ("verbose", "Tell echo applications to log if true", verbose);
+  cmd.AddValue ("tracing", "Enable pcap tracing", tracing);
+
+
+  cmd.Parse (argc,argv);
+
+  if (verbose)
+    {
+      LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
+      LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
+    }
+
+  nCsma = nCsma == 0 ? 1 : nCsma;
+
+  NodeContainer p2pNodes1;
+  p2pNodes1.Create (2);
+-----
+  NodeContainer p2pNodes2;
+  p2pNodes2.Add (p2pNodes1.Get (0));
+  p2pNodes2.Create (1);
+
+  NodeContainer csmaNodes;
+  csmaNodes.Add (p2pNodes2.Get (1));
+  csmaNodes.Create (3);
+
+  PointToPointHelper pointToPoint;
+  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
+  pointToPoint.SetChannelAttribute ("Delay", StringValue ("3ms"));
+
+  NetDeviceContainer p2pDevices1;
+  p2pDevices1 = pointToPoint.Install (p2pNodes1);
+
+  NetDeviceContainer p2pDevices2;
+  p2pDevices2 = pointToPoint.Install (p2pNodes2);
+
+  CsmaHelper csma;
+  csma.SetChannelAttribute ("DataRate", StringValue ("275Mbps"));
+  csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (500)));
+
+  NetDeviceContainer csmaDevices;
+  csmaDevices = csma.Install (csmaNodes);
+
+  InternetStackHelper stack;
+  stack.Install (p2pNodes1);
+  stack.Install (csmaNodes);
+
+  Ipv4AddressHelper address;
+  address.SetBase ("10.1.1.0", "255.255.255.0");
+  Ipv4InterfaceContainer p2p1Interfaces = address.Assign (p2pDevices1);
+
+  address.SetBase ("10.1.2.0", "255.255.255.0");
+  Ipv4InterfaceContainer p2p2Interfaces = address.Assign (p2pDevices2);
+
+  address.SetBase ("10.1.3.0", "255.255.255.0");
+  Ipv4InterfaceContainer csmaInterfaces = address.Assign (csmaDevices);
+
+  UdpEchoServerHelper echoServer (9);
+
+  ApplicationContainer serverApps = echoServer.Install (csmaNodes.Get (1));
+  serverApps.Start (Seconds (1.0));
+  serverApps.Stop (Seconds (10.0));
+
+  UdpEchoClientHelper echoClient (csmaInterfaces.GetAddress (1), 9);
+  echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
+  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
+  echoClient.SetAttribute ("PacketSize", UintegerValue (2048));
+
+  ApplicationContainer clientApps = echoClient.Install (p2pNodes1.Get (0));
+  clientApps.Start (Seconds (2.0));
+  clientApps.Stop (Seconds (10.0));
+
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+
+  AnimationInterface anim ("second.xml");
+  anim.SetConstantPosition(p2pNodes1.Get (0), 10.0, 10.0);
+  anim.SetConstantPosition(p2pNodes1.Get (1), 20.0, 20.0);
+
+  anim.SetConstantPosition(p2pNodes2.Get (0), 20.0, 20.0);
+  anim.SetConstantPosition(p2pNodes2.Get (1), 30.0, 30.0);
+
+  anim.SetConstantPosition(csmaNodes.Get (0), 30.0, 30.0);
+  anim.SetConstantPosition(csmaNodes.Get (1), 40.0, 40.0);
+  anim.SetConstantPosition(csmaNodes.Get (2), 50.0, 50.0);
+  anim.SetConstantPosition(csmaNodes.Get (3), 60.0, 60.0);
+
+  AsciiTraceHelper ascii;
+  pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("abcd.tr"));
+  csma.EnablePcapAll ("efgh.tr");
+
+
+  pointToPoint.EnablePcapAll ("second");
+  csma.EnablePcap ("second", csmaDevices.Get (1), true);
+
+  Simulator::Run ();
+  Simulator::Destroy ();
+  return 0;
+}
+-------
+q1
+set terminal pdf
+set output "wirelessQ1058.pdf"
+set title "Router Data"
+set xlabel "Router no"
+set ylabel "Router info"
+plot "ICTQ1058.txt" using 1:2 with lines title "speed mb/s"
+replot "ICTQ1058.txt" using 1:3 with lines title "signal range"
+q2
+set terminal png
+set output 'ICTQ2058.png'
+set style data histogram
+set style histogram clustered
+set style fill solid
+plot for [COL=2:3] 'ICTQ2058.txt' using COL:xtic(1) title 'AQI'
+-----------
+seventh.cc(cwnd)
+set terminal pdf
+set output "exam.pdf"
+set title "congenstion window"
+set xlabel "old"
+set ylabel "new"
+plot "seventh.cwnd" using 1:2 with linespoints title "old", "seventh.cwnd" using 1:3 with impulse title "new"
+---------
+ca2 - 1st.cc
+ //1 st server app
+  echoServer.SetAttribute("Port", StringValue("5000"));
+  ApplicationContainer serverApp1 = echoServer.Install (nodes.Get(1));//server node define
+  serverApp1.Start (Seconds (1.0));
+  serverApp1.Stop (Seconds (10.0));
+
+  //2n server app
+  echoServer.SetAttribute("Port", StringValue("5001"));
+  ApplicationContainer serverApp2 = echoServer.Install (nodes.Get(1));//server node define
+  serverApp2.Start (Seconds (2.0));
+  serverApp2.Stop (Seconds (10.0));
+-
+  ApplicationContainer clientApps1 = echoClient.Install (nodes.Get(0));//client node define
+  clientApps1.Start (Seconds (2.0));
+  clientApps1.Stop (Seconds (10.0));
+
+  //4th part
+  ApplicationContainer clientApps2 = echoClient.Install (nodes.Get(0));//client node define
+  clientApps2.Start (Seconds (2.0));
+  clientApps2.Stop (Seconds (10.0));
+
+AnimationInterface anim("first.xml");
+anim.SetConstantPosition(nodes.Get(0),10.0,10.0);
+anim.SetConstantPosition(nodes.Get(0),20.0,20.0);
+
+pointToPoint.EnablePcapAll ("first");
+---
+seven.
+set terminal pdf
+set output "exam.pdf"
+set title "congenstion window"
+set xlabel "old"
+set ylabel "new"
+plot "seventh.cwnd" using 1:2 with linespoints title "old", "seventh.cwnd" using 1:3 with impulse title "new"
