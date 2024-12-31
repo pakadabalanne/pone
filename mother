@@ -1,206 +1,177 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+-------------------------Autopsy-----------------------------
 
-#include "ns3/core-module.h"
-#include "ns3/network-module.h"
-#include "ns3/csma-module.h"
-#include "ns3/internet-module.h"
-#include "ns3/point-to-point-module.h"
-#include "ns3/applications-module.h"
-#include "ns3/ipv4-global-routing-helper.h"
+1. Image hash.
+Hint: Data Source -> Select Image -> File Metadata
 
-#include "ns3/netanim-module.h"
+2. Operating system
+Hint: Data Artifacts -> OS Information -> Select Software -> Program Name
 
+3. Installation date
+Hint: Data Artifacts -> OS Information -> Select Software -> Date / Time
 
-// Default Network Topology
-//
-//       10.1.1.0
-// n0 -------------- n1   n2   n3   n4
-//    point-to-point  |    |    |    |
-//                    ================
-//                      LAN 10.1.2.0
+4. Registered owner
+Hint: Data Artifacts -> OS Information -> Select Software -> Owner
 
+5. Computer Account Name.
+Hint: OS Accounts -> under Login Name
 
-using namespace ns3;
+6. Last recorded computer shutdown date/time.
+Hint: Data Source -> select Image -> vol 2 -> windows -> system32 -> config -> check SysEvent.evt file
 
-NS_LOG_COMPONENT_DEFINE ("SecondScriptExample");
+7. Accounts are recorded (total number).
+Hint: OS Accounts
 
-int 
-main (int argc, char *argv[])
-{
-  bool verbose = true;
-  uint32_t nCsma = 3;
-  bool tracing = true;
+8. Domain name used for the last web search
+Hint: Data Artifacts -> Web Search -> select last search
 
-  CommandLine cmd;
-  cmd.AddValue ("nCsma", "Number of \"extra\" CSMA nodes/devices", nCsma);
-  cmd.AddValue ("verbose", "Tell echo applications to log if true", verbose);
-  cmd.AddValue ("tracing", "Enable pcap tracing", tracing);
+9. Program used for the last web search
+Hint: Data Artifacts -> Web Search -> select last search
 
+10. Programs that may be used to communicate with third person.
+Hint: Data Artifacts -> Installed Programs
 
-  cmd.Parse (argc,argv);
+11. Executable files are in the recycle bin.
+Hint: Program Files -> Recycler
 
-  if (verbose)
-    {
-      LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
-      LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
-    }
+12. Export Dc3.docx file from Recycler to Host computer and analyse the content.
+Hint: Data Source -> Select Image -> Vol 2 -> Recycler
 
-  nCsma = nCsma == 0 ? 1 : nCsma;
+13. Time Zone
+Hint: Windows -> System32 -> Config -> System -> ControlSet001 -> Control -> TimeZoneInformation -> StandardName
 
-  NodeContainer p2pNodes1;
-  p2pNodes1.Create (2);
------
-  NodeContainer p2pNodes2;
-  p2pNodes2.Add (p2pNodes1.Get (0));
-  p2pNodes2.Create (1);
+14. Information about Operating System
+Hint: Windows -> System32 -> Config -> Software -> Microsoft -> Windows NT -> CurrentVersion
 
-  NodeContainer csmaNodes;
-  csmaNodes.Add (p2pNodes2.Get (1));
-  csmaNodes.Create (3);
+15. Find Computer Name
+Hint: Windows -> System32 -> Config -> System -> ControlSet001 -> Control -> ComputerName -> ComputerName
 
-  PointToPointHelper pointToPoint;
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("10Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("3ms"));
+16. Last recorded computer shutdown time
+Hint: Windows -> System32 -> Config -> Software -> Microsoft -> Windows NT -> CurrentVersion -> Prefetcher -> ExitTime
 
-  NetDeviceContainer p2pDevices1;
-  p2pDevices1 = pointToPoint.Install (p2pNodes1);
+17. Last user logon to the computer
+Hint: Windows -> System32 -> Config -> Software -> Microsoft -> Windows NT -> CurrentVersion -> Winlogon -> Default user Name
 
-  NetDeviceContainer p2pDevices2;
-  p2pDevices2 = pointToPoint.Install (p2pNodes2);
+18. Network cards used by this computer
+Hint: Windows -> System32 -> Config -> Software -> Microsoft -> Windows NT -> CurrentVersion -> NetworkCards
 
-  CsmaHelper csma;
-  csma.SetChannelAttribute ("DataRate", StringValue ("275Mbps"));
-  csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (500)));
+19. IP Address and details of the computer
+Hint: Windows -> System32 -> Config -> System -> ControlSet001 -> Services -> Tcpip -> Parameters -> Interfaces
 
-  NetDeviceContainer csmaDevices;
-  csmaDevices = csma.Install (csmaNodes);
+20. List all the users of the computer
+Hint: Windows -> System32 -> Config -> SAM -> Domains -> Account -> Users -> Names
 
-  InternetStackHelper stack;
-  stack.Install (p2pNodes1);
-  stack.Install (csmaNodes);
+21. Email clients used by the user
+Hint: Windows -> System32 -> Config -> Software -> Clients -> Mail
 
-  Ipv4AddressHelper address;
-  address.SetBase ("10.1.1.0", "255.255.255.0");
-  Ipv4InterfaceContainer p2p1Interfaces = address.Assign (p2pDevices1);
+22. Mounted devices
+Hint: Windows -> System32 -> Config -> System -> MountedDevices
 
-  address.SetBase ("10.1.2.0", "255.255.255.0");
-  Ipv4InterfaceContainer p2p2Interfaces = address.Assign (p2pDevices2);
-
-  address.SetBase ("10.1.3.0", "255.255.255.0");
-  Ipv4InterfaceContainer csmaInterfaces = address.Assign (csmaDevices);
-
-  UdpEchoServerHelper echoServer (9);
-
-  ApplicationContainer serverApps = echoServer.Install (csmaNodes.Get (1));
-  serverApps.Start (Seconds (1.0));
-  serverApps.Stop (Seconds (10.0));
-
-  UdpEchoClientHelper echoClient (csmaInterfaces.GetAddress (1), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
-  echoClient.SetAttribute ("PacketSize", UintegerValue (2048));
-
-  ApplicationContainer clientApps = echoClient.Install (p2pNodes1.Get (0));
-  clientApps.Start (Seconds (2.0));
-  clientApps.Stop (Seconds (10.0));
-
-  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
-  AnimationInterface anim ("second.xml");
-  anim.SetConstantPosition(p2pNodes1.Get (0), 10.0, 10.0);
-  anim.SetConstantPosition(p2pNodes1.Get (1), 20.0, 20.0);
-
-  anim.SetConstantPosition(p2pNodes2.Get (0), 20.0, 20.0);
-  anim.SetConstantPosition(p2pNodes2.Get (1), 30.0, 30.0);
-
-  anim.SetConstantPosition(csmaNodes.Get (0), 30.0, 30.0);
-  anim.SetConstantPosition(csmaNodes.Get (1), 40.0, 40.0);
-  anim.SetConstantPosition(csmaNodes.Get (2), 50.0, 50.0);
-  anim.SetConstantPosition(csmaNodes.Get (3), 60.0, 60.0);
-
-  AsciiTraceHelper ascii;
-  pointToPoint.EnableAsciiAll (ascii.CreateFileStream ("abcd.tr"));
-  csma.EnablePcapAll ("efgh.tr");
+23. List down recently accessed documents and their date and time
+Hint: Data Artifacts -> Recent Documents
 
 
-  pointToPoint.EnablePcapAll ("second");
-  csma.EnablePcap ("second", csmaDevices.Get (1), true);
 
-  Simulator::Run ();
-  Simulator::Destroy ();
-  return 0;
-}
--------
-q1
-set terminal pdf
-set output "wirelessQ1058.pdf"
-set title "Router Data"
-set xlabel "Router no"
-set ylabel "Router info"
-plot "ICTQ1058.txt" using 1:2 with lines title "speed mb/s"
-replot "ICTQ1058.txt" using 1:3 with lines title "signal range"
-q2
-set terminal png
-set output 'ICTQ2058.png'
-set style data histogram
-set style histogram clustered
-set style fill solid
-plot for [COL=2:3] 'ICTQ2058.txt' using COL:xtic(1) title 'AQI'
------------
-seventh.cc(cwnd)
-set terminal pdf
-set output "exam.pdf"
-set title "congenstion window"
-set xlabel "old"
-set ylabel "new"
-plot "seventh.cwnd" using 1:2 with linespoints title "old", "seventh.cwnd" using 1:3 with impulse title "new"
----------
-ca2 - 1st.cc
- //1 st server app
-  echoServer.SetAttribute("Port", StringValue("5000"));
-  ApplicationContainer serverApp1 = echoServer.Install (nodes.Get(1));//server node define
-  serverApp1.Start (Seconds (1.0));
-  serverApp1.Stop (Seconds (10.0));
 
-  //2n server app
-  echoServer.SetAttribute("Port", StringValue("5001"));
-  ApplicationContainer serverApp2 = echoServer.Install (nodes.Get(1));//server node define
-  serverApp2.Start (Seconds (2.0));
-  serverApp2.Stop (Seconds (10.0));
--
-  ApplicationContainer clientApps1 = echoClient.Install (nodes.Get(0));//client node define
-  clientApps1.Start (Seconds (2.0));
-  clientApps1.Stop (Seconds (10.0));
+-----------------------Volatility tool-------------------------------------
 
-  //4th part
-  ApplicationContainer clientApps2 = echoClient.Install (nodes.Get(0));//client node define
-  clientApps2.Start (Seconds (2.0));
-  clientApps2.Stop (Seconds (10.0));
+volatility.exe -f dumpname.raw imageinfo
 
-AnimationInterface anim("first.xml");
-anim.SetConstantPosition(nodes.Get(0),10.0,10.0);
-anim.SetConstantPosition(nodes.Get(0),20.0,20.0);
+1. Run a command to list all the process list
+volatility.exe -f dumpname.raw --profile=<profilename> pslist
 
-pointToPoint.EnablePcapAll ("first");
----
-seven.
-set terminal pdf
-set output "exam.pdf"
-set title "congenstion window"
-set xlabel "old"
-set ylabel "new"
-plot "seventh.cwnd" using 1:2 with linespoints title "old", "seventh.cwnd" using 1:3 with impulse title "new"
+2.Run a command to list the history of Internet Explorer
+volatility.exe -f dumpname.raw –-profile=<profilename> iehistory
+
+3.view the process listing in tree form - pstree
+
+4.inactive or hidden processes - psscan
+
+5.DLLs - dlllist
+
+6.commands on cmd - cmdscan
+
+7.active and terminated connections - connscan
+
+8.TCP/UDP connections - sockets
+
+9.physical addresses of registry hives - hivescan
+
+10.virtual addresses of registry hives - hivelist
+
+11.get the passwords - mimikatz
+
+12.hidden, malicious code analysis - malfind
+
+13.dump all memory resident pages - memdump
+
+
+
+
+--------------------------Wiershark-----------------------------------------
+
+
+2. Filter according to protocol
+Use the display filter bar at the top to filter packets by protocol.
+
+3. Filter according to IP address
+ip.addr == x.x.x.x
+
+4. Filter according to IP address and Protocol
+ip.addr == x.x.x.x && http
+
+5. Analyze DNS packets
+dns
+
+6. Analyze HTTP packets
+http
+
+7. Executive Summary: State in simple, direct terms what happened (when, who and what).
+statistics-capture file properties 
+
+8.windows hostname-
+kerberose- as request - request body 
+smtp-select victim - rightclick- follow 
+nbns-net bias
+    
+C name in kerberos or Name in nbns -right click - apply as column 	
+
+
+9. Victim Details: Victim’s IP address, MAC address, Windows hostname and Windows user account name.
+statistics-conversation-ipv4-decending order 
+
+10. Indicators of Compromise (IoCs): IP addresses, ports, domains and URLs associated with the infection. SHA256 hashes if any files from the infection can be extracted from the pcap.
+
+11. Login Data Malware: file - export objects - IMF - save - open with browser 
+
+12.Malecious attack date - 
+statistics - conversation - ip addr 
+search ip addr - click frame - arrival time 
+		ethernet II - source (00:00:00:00:00:00)  
+
+
+
+-----------------steganographic tools---------------------------------------
+photo and txt file should be in same folder 
+open folder with cmd
+copy /b txt_file_path_and_name+_jpg_path_and_name  
+copy /b D:\steng\cd.txt+D:\steng\aa.png merg.jpg
+D:\steng\cd.txt
+D:\steng\aa.png
+        1 file(s) copied.
+
+E:\stegno>copy /b E:\stegno\merged.rar+E:\stegno\image.png E:\Stegno\mergednew.rar
+E:\stegno\merged.rar
+E:\stegno\image.png
+        1 file(s) copied.
+
+
+
+-----------------FTK Imager----------------------------------------------------
+
+First using DumpIt create a raw file
+open FTK Imager-capture memory-"folder location"-capture memory-close
+file- add evidence item - contents of a folder - next -browse - finish-select and view 
+
+-----------------exif tool----------------------------------------------------------
+go to exiftool folder
+exiftool.exe "image file name"
